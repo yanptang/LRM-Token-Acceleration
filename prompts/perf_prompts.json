@@ -1,0 +1,48 @@
+[
+  
+  {
+    "id": "A1",
+    "category": "short",
+    "text": "What is the capital of Sweden? Answer in one sentence."
+  },
+  {
+    "id": "A2",
+    "category": "short",
+    "text": "Translate this to Chinese: \"Machine learning is transforming many industries.\""
+  },
+  {
+    "id": "A3",
+    "category": "short",
+    "text": "List three benefits of regular exercise in bullet points."
+  },
+  {
+    "id": "B1",
+    "category": "medium_reasoning",
+    "text": "Solve step by step: If a train travels 60 km in 1.5 hours, what is its average speed in km/h?"
+  },
+  {
+    "id": "B2",
+    "category": "medium_reasoning",
+    "text": "A shop gives a 20% discount on a jacket that originally costs $80. After that, a 10% tax is added. Calculate the final price step by step."
+  },
+  {
+    "id": "B3",
+    "category": "medium_reasoning",
+    "text": "If 4 workers can finish a task in 6 days, how many days will it take 3 workers to finish the same task, assuming all workers have the same productivity? Explain step by step."
+  },
+  {
+    "id": "C1",
+    "category": "long_reasoning",
+    "text": "Explain step by step how to solve this problem: A farmer has chickens and rabbits. There are 35 heads and 94 legs in total. How many chickens and rabbits are there?"
+  },
+  {
+    "id": "C2",
+    "category": "long_reasoning",
+    "text": "Write a detailed step-by-step explanation of how to compare the fractions 7/12 and 5/8 without using a calculator."
+  },
+  {
+    "id": "C3",
+    "category": "long_reasoning",
+    "text": "A student wants to save money for a laptop costing $1200. They already have $250 and can save $35 per week. Explain step by step how many weeks it will take, and include the reasoning clearly."
+  }
+]

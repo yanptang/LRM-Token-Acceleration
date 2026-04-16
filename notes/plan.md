@@ -1,6 +1,6 @@
 记录论文的进度和原有计划清单
 
-核心目标：如何在不明显降低推理质量的前提下，加速大型推理模型（LRM）的 token 生成速度
+核心目标：如何在不明显降低推理质量的前提下，加速大型推理模型（LRM）的 token 生成速度（把一个大模型“最后一步很慢的地方”改成更快的近似算法，并用系统优化让它跑得更快，然后证明这样做是值得的。）
 核心思路是两件事：
 - 算法层面：用 FlashHead 替换原来的分类头（减少计算）
 - 系统层面：用 Triton 优化 GPU kernel（提高执行效率）
@@ -14,13 +14,25 @@
 
 要做的事情：
 1️⃣ 建立 baseline + 找瓶颈（你论文的起点）
-- 跑原始模型（qwen2.5-1.5B）
+- 跑原始模型（qwen2.5-1.5B），在单GPU上稳定运行，记录推理时间和生成的token数量
 - 测这些指标：
     - TPOT（每个token时间）
     - 总延迟
+    - 用 profiler 分析瓶颈,即什么阶段占用时间最多（如 attention, feedforward, head等）
     - classification head占多少时间
-    - 用 profiler 分析瓶颈
+- 回答两个问题：
+    - 1. 这个模型现在的速度如何？通过以下指标
+        - latency（总推理时间）
+        - TPOT（每个token的平均推理时间，Time Per Output Token），计算公式=总推理时间 / 生成的token数量
+    - 2. 慢主要慢在哪个阶段？通过profiler分析来找出瓶颈，特别关注classification head的时间占比（因为FlashHead算法专注解决这个问题）
+        - Decode-stage latency（解码阶段的延迟）
+        - classification head 占总时间的比例
 
+本阶段输出的结论类似为：
+```
+    “在 batch size=1、单 GPU、长推理输出下，classification head 占 decode 时间 xx%，因此值得优化”
+    或者 “classification head 占比不高，真正瓶颈在 attention / KV cache / memory bandwidth”
+```
 
 2️⃣ 集成 FlashHead + 做 trade-off 实验
 把 FlashHead 接进模型（替换 classification head）
