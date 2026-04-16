@@ -1,0 +1,37 @@
+cat > .gitignore << 'EOF'
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VSCode
+.vscode/
+
+# Model files and model directories
+models/
+*.bin
+*.pt
+*.pth
+*.safetensors
+
+# Hugging Face / caches
+.cache/
+**/cache/
+huggingface/
+
+# Outputs and logs
+results/
+logs/
+*.out
+*.log
+
+# OS files
+.DS_Store
+EOF
