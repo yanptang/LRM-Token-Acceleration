@@ -11,7 +11,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 # 1. Configuration
 # ========================
 MODEL_PATH = "/data/users/tongf/master_thesis_tang/models/Qwen3-1.7B"
-PROMPT_FILE = "prompts/qwen3_1.7b_e2e_100.json"
+PROMPT_FILE = "prompts/perf_prompts_100_qwen3.json"
 OUTPUT_DIR = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
@@ -43,6 +43,8 @@ def build_messages(user_prompt: str):
         },
     ]
 
+# 将 user prompt 转换成模型输入的 input_ids 和 attention_mask
+# 这一步统一完成了 prompt 的格式化和 tokenization，方便后续的推理过程
 def prepare_inputs(tokenizer, user_prompt, device):
     messages = build_messages(user_prompt)
     text = tokenizer.apply_chat_template(
@@ -53,7 +55,8 @@ def prepare_inputs(tokenizer, user_prompt, device):
     inputs = tokenizer(text, return_tensors="pt")
     return inputs.to(device)
 
-
+#统计函数，计算完所有的prompt结果之后，调用这个函数来计算平均 latency、平均输入输出 token 数量等统计信息
+#返回一个包含这些统计信息的字典
 def summarize_results(results):
     latencies = [r["latency_s"] for r in results if r["latency_s"] is not None]
     input_tokens = [r["input_tokens"] for r in results if r["input_tokens"] is not None]
@@ -135,32 +138,45 @@ def main():
         prompt_id = item["id"]
         category = item.get("category", "unknown")
         prompt = item["prompt"]
-
+        #打印处理的信息，可以反馈在.out文件上，方便查看当前进度和正在处理的 prompt 信息
         print(f"[{idx:03d}/{len(prompts)}] Running {prompt_id} ({category})")
 
+        #---------------------------
+        #1.准备输入
+        #---------------------------
         inputs = prepare_inputs(tokenizer, prompt, model.device)
         input_len = inputs["input_ids"].shape[1]
 
         torch.cuda.synchronize()
         start = time.perf_counter()
 
+        #--------------------------------------------------------------------------------
+        #2.文本生成
+        # 进行文本生成，生成的文本长度不受限制，直到模型认为结束或者达到 max_new_tokens 的限制
+        # 推理阶段不需要计算梯度，所以使用 torch.no_grad() 来节省内存和加速计算
+        # 这里输出的是生成的 token ids，后续会解码成文本
+        #--------------------------------------------------------------------------------
         with torch.no_grad():
             outputs = model.generate(
                 **inputs,
-                max_new_tokens=MAX_NEW_TOKENS,
-                do_sample=DO_SAMPLE,
-                pad_token_id=tokenizer.pad_token_id,
+                max_new_tokens=MAX_NEW_TOKENS, 
+                do_sample=DO_SAMPLE, #是否贪心，False 表示贪心生成，True 表示使用采样生成
+                pad_token_id=tokenizer.pad_token_id, #生成时使用的 pad_token_id，确保生成过程中不会因为缺少 pad_token 而出错
             )
 
-        torch.cuda.synchronize()
-        end = time.perf_counter()
+        torch.cuda.synchronize() #等待 GPU 完成所有计算，确保计时的准确性
+        end = time.perf_counter() 
 
-        output_ids = outputs[0]
+        output_ids = outputs[0]  #生成的 token ids，包含了输入部分和新生成的部分
         total_len = output_ids.shape[0]
         generated_len = total_len - input_len
         latency_s = end - start
         tpot_ms = (latency_s / generated_len) * 1000 if generated_len > 0 else None
 
+        #----------------
+        #3.解码生成的文本
+        # 将生成的 token ids 转换回文本，跳过输入部分的 token，只解码新生成的部分
+        #----------------
         generated_text = tokenizer.decode(
             output_ids[input_len:],
             skip_special_tokens=True,
@@ -180,8 +196,11 @@ def main():
         }
         results.append(result)
 
+    #生成结果的摘要保存到 summary 字段中，包含平均 latency、平均输入输出 token 数量等统计信息
     summary = summarize_results(results)
 
+    #环境和配置信息也保存到 payload 中
+    #这就是最终保存信息的结构
     payload = {
         "config": {
             "model_path": MODEL_PATH,
@@ -195,13 +214,14 @@ def main():
         "results": results,
     }
 
+    #保存结果到 JSON 文件
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2, ensure_ascii=False)
+        #json.dump负责将 Python 对象转换成 JSON 格式的字符串，并写入到文件中。参数 indent=2 表示使用 2 个空格进行缩进，使输出的 JSON 文件更易读。参数 ensure_ascii=False 表示允许输出非 ASCII 字符（如中文），而不是将它们转义成 Unicode 字符。
+        json.dump(payload, f, indent=2, ensure_ascii=False) 
 
     print("\n===== Average Summary =====")
     print(json.dumps(summary, indent=2, ensure_ascii=False))
     print(f"\nDetailed results saved to: {OUTPUT_FILE}")
-
 
 if __name__ == "__main__":
     main()

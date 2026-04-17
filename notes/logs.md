@@ -105,6 +105,10 @@ C1/C2/C3 这类长推理样本，TPOT 大约在：
 
 2. 实验相关：
 - 完成阶段1的测试，补完整为“baseline + profiling”，主要测LM head的时间占比，看看是否值得优化
+- 理解torch profiler的输出结果，分析每个阶段的时间占比，特别关注LM head的占比情况，为后续优化提供依据
+- 开发一个可视化profiler结果的工具，方便后续分析和展示
+    - 包括几个主要阶段的时间占比（prefill, decode, sampling, LM head等）
+    - 以及每个阶段内主要算子的时间占比，特别是LM head相关的算子（比如线性层、softmax等）
 
 ## 今日进度：
 ### 1.一些思考与更新
@@ -112,19 +116,71 @@ C1/C2/C3 这类长推理样本，TPOT 大约在：
 2. 测试的思路更新为：LRM的推理过程，就是会“长输出”+“autoregressive decode 重复很多轮”；而非昨天GPT给我的思路，先去验证短回答，长回答谁更慢，这个对本身论文没有什么意义；
 - **LRM就是会token很多，我们做的事情就是加速这个token的生成；所以在LRM上去加速这个过程，这个是整个论文的意义，是非常solid的**
 - 测试的第一步应该是我们找的方法，或者说是LM head对应的这个阶段是占比多少，得到一个基准线
-- 占比高，意义更大；占比低也没有关系，仍然可以优化（蚊子再小也是肉，而且当基数很大时，优化的绝对收益仍然可观）
+- **占比高，意义更大；占比低也没有关系，仍然可以优化（蚊子再小也是肉，而且当基数很大时，优化的绝对收益仍然可观）**
+- 说白了这个论文实际上是对FlashHead算法在LRM上的一个应用和验证，实际上是否显著并不重要，重要的是我们证明了这个方法在LRM上是有意义的（不管占比高还是占比低，我们都可以优化，或者说我们都证明了这个方法在LRM上是有意义的）
 
 ### 2. 思路实验整理
 1. 不设置max_new_tokens的限制（仍然建议保留一个很大的 safety cap，防止无限续写和异常回答，比如9999），模拟真实生成场景下的端到端测量
 2. 固定 prompt 集，测试端到端指标(latency，token numbers，TPOT)，并用 profiler 分析每个阶段的时间占比，特别关注 LM head 的占比
 3. 阶段拆分：
-   - Tokenization
-   - Embedding
-   - Transformer
-   - LM Head
-   - Sampling
-   - Autoregressive Loop
+   - prefill 阶段：从输入 prompt 的 tokenization、embedding、transformer 编码等，直到生成第一个 token 之前的阶段
+   - decode 阶段：从生成第一个 token 开始，到生成最后一个 token,包括新token的生成、采样等，直到生成结束的阶段
+       - decode还能拆分transformer，sampling，LM head等环节，看看每个环节的占比情况，特别是LM head的占比情况
 
 ### 3.实际做的事情
 1. 先做端到端测试，因为profiling本身会拖慢推理的速度，先直接模拟一个实际生产，无干扰的环境下的性能水平
-2. 抽样进行profiler测试，先大致看看水平
+    - latency 和 output token numbers 几乎是线性关系
+    - TPOT_ms，除了第一个异常偏高；其他基本集中在12ms左右
+
+2. 第一次抽样进行profiler测试，先大致看看水平
+- 输出结果：results/qwen3_torchprofiler_summary.json
+- 结果拆解：
+    - 时间指标，"prefill_time_s": 0.1530966069549322,"decode_time_s": 4.647364222444594,"total_latency_s": 4.800460829399526,分别对应把整段输入 prompt 一次性“读进去”的时间，之后一个 token 一个 token 往外生成的总时间，以及两者的总和
+    - 具体算子：prefill_top_ops 和 decode_top_ops 分别对应 prefill 阶段和 decode 阶段的算子时间占比，按照时间占比从高到低排序，展示前20个算子
+
+    - 存储信息
+    ```python
+    #记录算子的名字key、CPU时间、设备时间、调用次数等信息，方便后续分析
+        for evt in key_averages:
+            events.append({
+                "key": evt.key, #算子名字
+                "cpu_time_total_us": evt.cpu_time_total, #算子在 CPU 上的总时间，单位是微秒
+                "device_time_total_us": get_device_time(evt),#算子在设备（GPU）上的总时间，单位是微秒
+                "count": evt.count, #算子被调用的次数
+                "self_cpu_time_total_us": evt.self_cpu_time_total,#算子自身在 CPU 上的总时间，不包括子调用的时间，单位是微秒
+            })
+    ```
+
+算子定义拆解
+| 算子 | 含义 |
+| --- | --- |
+| aten::matmul / mm | attention 和 FFN 的矩阵乘法 |
+| aten::linear | 线性层（Wq, Wk, Wv, Wo, FFN） |
+| scaled_dot_product_attention | PyTorch 的 SDPA |
+| _flash_attention_forward | FlashAttention kernel |
+| aten::mul / add | elementwise 操作 |
+| aten::to / _to_copy | dtype 转换或 tensor copy |
+| aten::cat | 拼接 KV cache |
+| reduce_kernel / mean | layernorm |
+
+3. 第二次完整测试一条，拆分decode阶段，看LM head占比
+
+
+### 今日小结
+```text   
+明确论文真的要回答的问题：
+1 FlashHead 能不能接到 LRM 上
+2 接上以后是否能带来可观测的性能变化
+3 这种变化在 LRM 场景下如何解释
+4 因此，FlashHead 在 LRM 上是不是一个有意义的应用方向
+```
+
+```text
+第一阶段 baseline 结论
+在 Qwen3-1.7B 上，真实自然生成场景下，模型会普遍产生较长推理链；
+平均输出长度约 823 tokens，远大于平均输入长度 57 tokens；
+平均端到端延迟约 9.78 秒；
+平均 TPOT 约 11.89 ms/token；
+延迟与输出 token 数高度相关，说明decode 阶段是总体时延的主导因素；
+因此，针对 decode 路径中的 LM head / sampling 等环节做加速，是有实验意义的
+```

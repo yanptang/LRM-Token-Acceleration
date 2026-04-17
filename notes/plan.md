@@ -1,6 +1,7 @@
 记录论文的进度和原有计划清单
 
-核心目标：如何在不明显降低推理质量的前提下，加速大型推理模型（LRM）的 token 生成速度（把一个大模型“最后一步很慢的地方”改成更快的近似算法，并用系统优化让它跑得更快，然后证明这样做是值得的。）
+核心目标：如何在不明显降低推理质量的前提下，加速大型推理模型（LRM）的 token 生成速度（把一个大模型“最后一步很慢的地方”改成更快的近似算法，并用系统优化让它跑得更快，然后证明这样做是值得的）
+**但是作为毕业论文来说，在 LRM / reasoning-style generation 场景中复现 FlashHead，并验证其性能收益；这就是全部要做的事情**
 核心思路是两件事：
 - 算法层面：用 FlashHead 替换原来的分类头（减少计算）
 - 系统层面：用 Triton 优化 GPU kernel（提高执行效率）
@@ -53,3 +54,16 @@ probe 数量（P）
 - memory access（coalescing）
 - kernel fusion
 - shared memory 使用
+
+
+-------------------------------------------------------
+
+主线：
+baseline：建立 LRM workload
+profiler：建立解释框架
+FlashHead：实现迁移
+before/after：做应用验证
+analysis：解释适用性和意义
+
+高性能triton：
+FlashHead集成下的LRM，再加入triton算子使得多GPU计算；看是否提升
