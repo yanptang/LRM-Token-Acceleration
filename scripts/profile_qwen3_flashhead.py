@@ -1,83 +1,110 @@
-'''
-更新日期：2026.04.17
-
-这个版本是用于 Qwen3-1.7B 的分层 profiling 脚本，目标是：
-1. 将多条样本的生成过程拆分为 Prefill / Decode 两大阶段。
-2. 再将 Decode 内部进一步拆分为：
-   - Transformer
-   - LM Head
-   - Sampling
-3. 使用“自然生成”方式：
-   - 正常情况下，遇到 EOS 就停止
-   - 同时保留一个很大的 HARD_MAX_NEW_TOKENS 作为保险上限，避免异常情况下无限生成
-4. 导出轻量级 trace：
-   - Prefill 全部导出 trace
-   - Decode 只导出前若干步（默认 3 步）的 trace，避免 json 文件过大
-5. 输出最终的 json 结果，包含：
-   - 端到端时间
-   - Prefill / Decode 时间
-   - Decode 内 Transformer / LM Head / Sampling 时间
-   - 各部分占比
-   - 自然停止信息
-   - 生成文本
-
-说明：
-- 输入改为多条 prompt（默认 30 条）
-- 每条 prompt 只保留自己的汇总结果
-- 不保存 per_step_stats 这类逐 token 明细
-'''
+# profile_qwen3_flashhead.py
+# 更新日期：2026.04.17
+#
+# 目的：
+# 1. 基于你现有的 qwen3 分层 profiling 脚本，集成 FlashHead
+# 2. Prefill 阶段保持 dense lm_head，不改
+# 3. Decode 阶段将 dense lm_head + sampling 替换为 FlashHead.get_next_token()
+# 4. 继续输出：
+#    - 端到端时间
+#    - Prefill / Decode 时间
+#    - Decode 内 Transformer / LM Head / Sampling 时间
+#    - trace 文件
+#
+# 说明：
+# - 这是“最稳的第一版”：
+#   * greedy only（do_sample=False）
+#   * prefill dense
+#   * decode flashhead
+# - FlashHead 模式下：
+#   * decode_lm_head = FlashHead 全部开销
+#   * decode_sampling = 0
+#
+# 依赖：
+# - 同目录下存在 flash_head.py（原作者提供）
+# - 本地模型目录或 HF cache 中可找到 clustering_cache.safetensors
 
 # ======================================
-# 0. 导入必要的库
+# 0. 导入必要库
 # ======================================
 import json
 import time
+import random
+import sys
 from pathlib import Path
 
 import torch
 from torch.profiler import profile, ProfilerActivity, record_function
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
+# 如果 flash_head.py 与本脚本同目录，确保可导入
+CURRENT_DIR = Path(__file__).resolve().parent
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR))
+
+from flash_head import FlashHead, get_flash_head_parameters
+
 
 # ======================================
 # 1. 配置部分
 # ======================================
-# 使用本地模型路径
+# 本地模型路径
 MODEL_PATH = "/data/users/tongf/master_thesis_tang/models/Qwen3-1.7B"
 
 # prompt 文件路径
-PROMPT_FILE = "prompts/perf_prompts_100_qwen3.json"
+PROMPT_FILE = "/data/users/tongf/master_thesis_tang/prompts/perf_prompts_100_qwen3.json"
 
-# 本次测试多条样本：示例先测 30 条
-import random
+# 本次测试多条样本：默认 30 条
 random.seed(42)
-PROFILE_PROMPT_IDS = sorted(random.sample([f"P{i:03d}" for i in range(1, 101)], 30))
+PROFILE_PROMPT_IDS = sorted(random.sample([f"P{i:03d}" for i in range(1, 101)], 3))
 
 # 输出目录
 OUTPUT_DIR = Path("results")
-TRACE_DIR = OUTPUT_DIR / "profiler_traces"
+TRACE_DIR = OUTPUT_DIR / "profiler_traces_flashhead"
 OUTPUT_DIR.mkdir(exist_ok=True)
 TRACE_DIR.mkdir(exist_ok=True)
 
 # 输出 json 文件
-OUTPUT_JSON = OUTPUT_DIR / "qwen3_hierarchical_profile_30prompts.json"
+OUTPUT_JSON = OUTPUT_DIR / "qwen3_flashhead_profile_30prompts.json"
 
 # 模型精度
 DTYPE = torch.bfloat16
 TRUST_REMOTE_CODE = False
 
-# “自然生成”为主，但保留一个极大的保险上限，防止异常情况下无限生成
+# “自然生成”为主，但保留一个极大的保险上限
 HARD_MAX_NEW_TOKENS = 4096
 
-# Decode trace 只记录前几步，避免 trace 文件过大
+# Decode trace 只记录前几步
 TRACE_DECODE_STEPS = 3
 
 # warm-up 次数
 WARMUP_RUNS = 2
 
+# ========== FlashHead 相关配置 ==========
+USE_FLASHHEAD = True
+
+# 这里填“聚类缓存所在目录”，相对于 model_or_dir 的 cache_dir
+# 举例：
+#   如果 clustering_cache.safetensors 在
+#   /data/users/tongf/master_thesis_tang/models/Qwen3-1.7B/flash_head_cache/clustering_cache.safetensors
+#   那么这里填 "flash_head_cache"
+FLASHHEAD_CACHE_DIR = "flash_head_cache"
+
+# 这里通常直接等于 MODEL_PATH；如果你想从 HF repo id 加载，也可以填 repo 名
+FLASHHEAD_MODEL_OR_DIR = MODEL_PATH
+
+# 先扫 probes，cluster 数体现在你加载的 clustering cache 中
+FLASHHEAD_N_PROBES = 256
+
+# 第一版先不额外传 special tokens
+FLASHHEAD_SPECIAL_TOKEN_IDS = None
+
+# greedy only
+FLASHHEAD_DO_SAMPLE = False
+
 
 # ======================================
-# 2. 一些辅助函数
+# 2. 辅助函数
 # ======================================
 def cuda_sync():
     """如果有 CUDA，则强制同步，保证计时更准确。"""
@@ -85,10 +112,14 @@ def cuda_sync():
         torch.cuda.synchronize()
 
 
+def safe_div(a, b):
+    """安全除法，避免除零。"""
+    return a / b if b not in [0, None] else None
+
+
 def build_messages(user_prompt: str):
     """
-    构造 chat template 所需的 messages。
-    这里保留 system + user 的格式，和 Qwen3 的聊天模板一致。
+    构造 chat template 所需 messages。
     """
     return [
         {
@@ -104,7 +135,7 @@ def build_messages(user_prompt: str):
 
 def prepare_inputs(tokenizer, user_prompt, device):
     """
-    将用户 prompt 应用 chat template，转成模型输入张量。
+    应用 chat template，转成模型输入张量。
     """
     messages = build_messages(user_prompt)
     text = tokenizer.apply_chat_template(
@@ -118,7 +149,7 @@ def prepare_inputs(tokenizer, user_prompt, device):
 
 def load_selected_prompts(prompt_file, selected_ids):
     """
-    从 prompt 文件中加载指定 id 的 prompt。
+    从 prompt 文件加载指定 id 的 prompt。
     """
     with open(prompt_file, "r", encoding="utf-8") as f:
         prompts = json.load(f)
@@ -134,8 +165,7 @@ def load_selected_prompts(prompt_file, selected_ids):
 
 def warmup_model(model, tokenizer, device, warmup_text="Please briefly introduce yourself."):
     """
-    预热模型，避免第一次推理时间异常偏大。
-    这里使用一个简短 prompt，跑固定次数，不导出 trace，也不写入最终结果。
+    预热模型。
     """
     print(f"Running warm-up for {WARMUP_RUNS} time(s)...")
 
@@ -162,25 +192,49 @@ def warmup_model(model, tokenizer, device, warmup_text="Please briefly introduce
         print(f"  warm-up run {i + 1}/{WARMUP_RUNS} done.")
 
 
-def safe_div(a, b):
-    """安全除法，避免除零错误。"""
-    return a / b if b not in [0, None] else None
+def build_flash_head(model):
+    """
+    根据作者提供接口构造 FlashHead。
+    """
+    
+    params = get_flash_head_parameters(
+        lm_head=model.lm_head,
+        cache_dir=FLASHHEAD_CACHE_DIR,
+        model_or_dir=FLASHHEAD_MODEL_OR_DIR,
+    )
+
+    flash_head = FlashHead(
+        lm_head=model.lm_head,
+        centroids=params["centroids"],
+        vocab_maps_tensor=params["vocab_maps_tensor"],
+        n_probes=FLASHHEAD_N_PROBES,
+        special_token_ids=FLASHHEAD_SPECIAL_TOKEN_IDS,
+    )
+    print("lm_head.weight.shape =", tuple(model.lm_head.weight.shape))
+    print("flash_head.centroids.shape =", tuple(flash_head.centroids.shape))
+    print("flash_head.cluster_linear.weight.shape =", tuple(flash_head.cluster_linear.weight.shape))
+    flash_head.eval()
+    flash_head.to(model.device)
+    return flash_head
 
 
 # ======================================
 # 3. 核心 profiling 逻辑
 # ======================================
-def profile_single_prompt(model, tokenizer, item):
+def profile_single_prompt(model, tokenizer, item, flash_head=None):
     """
-    对单条 prompt 进行分层 profiling：
-    1. Prefill 单独计时，并导出完整 prefill trace
-    2. Decode 总时间单独计时
-    3. Decode 内部进一步拆成：
-       - Transformer
-       - LM Head
-       - Sampling
-    4. Decode 的 trace 只记录前 TRACE_DECODE_STEPS 步
-    5. 不保存 per_step_stats，只保留该 prompt 的总体统计结果
+    对单条 prompt 进行 profiling：
+
+    1. Prefill：
+       - transformer / lm_head / sampling
+       - 保持 dense lm_head，不改
+    2. Decode：
+       - transformer
+       - 若 flash_head is None：dense lm_head + argmax
+       - 若 flash_head is not None：FlashHead.get_next_token()
+    3. FlashHead 模式下：
+       - decode_lm_head = FlashHead 整体耗时
+       - decode_sampling = 0
     """
     prompt_id = item["id"]
     category = item.get("category", "unknown")
@@ -194,7 +248,7 @@ def profile_single_prompt(model, tokenizer, item):
     eos_token_id = tokenizer.eos_token_id
 
     # ==================================================
-    # 3.1 Prefill profiling
+    # 3.1 Prefill profiling（保持 dense）
     # ==================================================
     cuda_sync()
     prefill_start = time.perf_counter()
@@ -228,10 +282,10 @@ def profile_single_prompt(model, tokenizer, item):
     prefill_end = time.perf_counter()
     prefill_time_s = prefill_end - prefill_start
 
-    prefill_trace_path = TRACE_DIR / f"{prompt_id}_prefill_trace_hierarchical.json"
+    prefill_trace_path = TRACE_DIR / f"{prompt_id}_prefill_trace_flashhead.json"
     prof_prefill.export_chrome_trace(str(prefill_trace_path))
 
-    # 第一个 token 是 prefill 末尾生成出来的
+    # 第一个 token 是 prefill 末尾生成的
     generated_token_ids = [next_token]
     natural_stop = False
     hit_hard_cap = False
@@ -240,7 +294,7 @@ def profile_single_prompt(model, tokenizer, item):
         natural_stop = True
 
     # ==================================================
-    # 3.2 Decode profiling（完整计时）
+    # 3.2 Decode profiling
     # ==================================================
     decode_time_s = 0.0
     transformer_time_s = 0.0
@@ -287,7 +341,9 @@ def profile_single_prompt(model, tokenizer, item):
             cuda_sync()
             decode_step_start = time.perf_counter()
 
+            # ---------------------------
             # (1) Transformer
+            # ---------------------------
             cuda_sync()
             t1 = time.perf_counter()
 
@@ -319,37 +375,69 @@ def profile_single_prompt(model, tokenizer, item):
             hidden_states = backbone_outputs.last_hidden_state
             past_key_values = backbone_outputs.past_key_values
 
-            # (2) LM Head
+            # ---------------------------
+            # (2) LM Head / FlashHead
+            # ---------------------------
             cuda_sync()
             t3 = time.perf_counter()
 
-            if trace_enabled and decode_steps < TRACE_DECODE_STEPS:
-                with record_function("decode_lm_head"):
+            if flash_head is None:
+                # ===== Baseline 路径：dense lm_head =====
+                if trace_enabled and decode_steps < TRACE_DECODE_STEPS:
+                    with record_function("decode_lm_head"):
+                        with torch.no_grad():
+                            logits = model.lm_head(hidden_states[:, -1:, :])
+                else:
                     with torch.no_grad():
                         logits = model.lm_head(hidden_states[:, -1:, :])
-            else:
-                with torch.no_grad():
-                    logits = model.lm_head(hidden_states[:, -1:, :])
 
-            cuda_sync()
-            t4 = time.perf_counter()
-            lm_head_step_s = t4 - t3
-            lm_head_time_s += lm_head_step_s
+                cuda_sync()
+                t4 = time.perf_counter()
+                lm_head_step_s = t4 - t3
+                lm_head_time_s += lm_head_step_s
 
-            # (3) Sampling
-            cuda_sync()
-            t5 = time.perf_counter()
+                # ---------------------------
+                # (3) Sampling
+                # ---------------------------
+                cuda_sync()
+                t5 = time.perf_counter()
 
-            if trace_enabled and decode_steps < TRACE_DECODE_STEPS:
-                with record_function("decode_sampling"):
+                if trace_enabled and decode_steps < TRACE_DECODE_STEPS:
+                    with record_function("decode_sampling"):
+                        next_token = torch.argmax(logits[:, -1, :], dim=-1, keepdim=True)
+                else:
                     next_token = torch.argmax(logits[:, -1, :], dim=-1, keepdim=True)
-            else:
-                next_token = torch.argmax(logits[:, -1, :], dim=-1, keepdim=True)
 
-            cuda_sync()
-            t6 = time.perf_counter()
-            sampling_step_s = t6 - t5
-            sampling_time_s += sampling_step_s
+                cuda_sync()
+                t6 = time.perf_counter()
+                sampling_step_s = t6 - t5
+                sampling_time_s += sampling_step_s
+
+            else:
+                # ===== FlashHead 路径：直接返回 next_token =====
+                if trace_enabled and decode_steps < TRACE_DECODE_STEPS:
+                    with record_function("decode_lm_head"):
+                        with torch.no_grad():
+                            next_token = flash_head.get_next_token(
+                                hidden_states[:, -1:, :],
+                                do_sample=FLASHHEAD_DO_SAMPLE,
+                            )
+                else:
+                    with torch.no_grad():
+                        next_token = flash_head.get_next_token(
+                            hidden_states[:, -1:, :],
+                            do_sample=FLASHHEAD_DO_SAMPLE,
+                        )
+
+                cuda_sync()
+                t4 = time.perf_counter()
+                lm_head_step_s = t4 - t3
+                lm_head_time_s += lm_head_step_s
+
+                # FlashHead 已完成 token selection
+                # 为保持和 baseline 表结构一致，这里 sampling 记 0
+                sampling_step_s = 0.0
+                sampling_time_s += sampling_step_s
 
             cuda_sync()
             decode_step_end = time.perf_counter()
@@ -367,7 +455,7 @@ def profile_single_prompt(model, tokenizer, item):
         if trace_enabled:
             prof_decode_trace.__exit__(None, None, None)
 
-    decode_trace_path = TRACE_DIR / f"{prompt_id}_decode_first{TRACE_DECODE_STEPS}steps_trace.json"
+    decode_trace_path = TRACE_DIR / f"{prompt_id}_decode_first{TRACE_DECODE_STEPS}steps_trace_flashhead.json"
     if trace_enabled:
         prof_decode_trace.export_chrome_trace(str(decode_trace_path))
 
@@ -401,6 +489,12 @@ def profile_single_prompt(model, tokenizer, item):
         "id": prompt_id,
         "category": category,
         "prompt": prompt,
+
+        "mode": "flashhead" if flash_head is not None else "baseline",
+        "use_flashhead": flash_head is not None,
+        "flashhead_n_probes": FLASHHEAD_N_PROBES if flash_head is not None else None,
+        "flashhead_cache_dir": FLASHHEAD_CACHE_DIR if flash_head is not None else None,
+        "flashhead_model_or_dir": FLASHHEAD_MODEL_OR_DIR if flash_head is not None else None,
 
         "input_tokens": input_len,
         "output_tokens": output_len,
@@ -484,7 +578,7 @@ def main():
 
     print("GPU:", torch.cuda.get_device_name(0))
 
-    # 加载要 profile 的 prompts
+    # 加载 prompts
     selected_prompts = load_selected_prompts(PROMPT_FILE, PROFILE_PROMPT_IDS)
 
     # 加载 tokenizer 和 model
@@ -506,7 +600,16 @@ def main():
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # 预热模型
+    # 构建 FlashHead
+    flash_head = None
+    if USE_FLASHHEAD:
+        print("Building FlashHead...")
+        flash_head = build_flash_head(model)
+        print("FlashHead ready.")
+        print(f"  cache_dir = {FLASHHEAD_CACHE_DIR}")
+        print(f"  n_probes  = {FLASHHEAD_N_PROBES}")
+
+    # 预热
     warmup_model(model, tokenizer, model.device)
 
     # 逐条 profiling
@@ -514,9 +617,15 @@ def main():
     for idx, item in enumerate(selected_prompts, start=1):
         print(f"\n[{idx}/{len(selected_prompts)}] Profiling {item['id']} ({item.get('category', 'unknown')})")
 
-        result = profile_single_prompt(model, tokenizer, item)
+        result = profile_single_prompt(
+            model=model,
+            tokenizer=tokenizer,
+            item=item,
+            flash_head=flash_head,
+        )
         results.append(result)
 
+        print(f"mode                      = {result['mode']}")
         print(f"input_tokens              = {result['input_tokens']}")
         print(f"output_tokens             = {result['output_tokens']}")
         print(f"prefill_time_s            = {result['prefill_time_s']:.6f}")
@@ -547,6 +656,11 @@ def main():
             "hard_max_new_tokens": HARD_MAX_NEW_TOKENS,
             "trace_decode_steps": TRACE_DECODE_STEPS,
             "warmup_runs": WARMUP_RUNS,
+            "use_flashhead": USE_FLASHHEAD,
+            "flashhead_cache_dir": FLASHHEAD_CACHE_DIR if USE_FLASHHEAD else None,
+            "flashhead_model_or_dir": FLASHHEAD_MODEL_OR_DIR if USE_FLASHHEAD else None,
+            "flashhead_n_probes": FLASHHEAD_N_PROBES if USE_FLASHHEAD else None,
+            "flashhead_do_sample": FLASHHEAD_DO_SAMPLE if USE_FLASHHEAD else None,
         },
         "summary": summary,
         "results": results,

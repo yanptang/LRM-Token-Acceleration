@@ -89,7 +89,12 @@
 
 
 
+# 具体阶段理解LLM
 
-## Transformer的本质：
+## Transformer
 Transformer是一种基于自注意力机制的神经网络架构，本质是通过self-attention机制来捕捉输入序列中不同位置之间的关系，从而实现上下文理解和生成。
 
+
+
+## LM HEAD 
+LM Head 的本质是一个巨大的矩阵乘法：$$[1, \text{Hidden Size}] \times [\text{Hidden Size}, \text{Vocab Size}]$$

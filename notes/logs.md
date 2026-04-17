@@ -163,7 +163,30 @@ C1/C2/C3 这类长推理样本，TPOT 大约在：
 | aten::cat | 拼接 KV cache |
 | reduce_kernel / mean | layernorm |
 
-3. 第二次完整测试一条，拆分decode阶段，看LM head占比
+3. 第二次完整测试30条，测试代码已经提交到 scripts/profile_qwen3_hierarchical.py，结果保存在 results/qwen3_torchprofiler_summary_hierarchical.json
+- 结果分析：
+```text
+1.系统级观察
+实验表明，在 30 条 prompt 的平均结果上，Qwen3-1.7B 的端到端生成延迟几乎完全由 decode 阶段决定，prefill 占比不足 1%。因此，针对长文本生成场景，优化 decode latency 是提升推理效率的关键。
+
+2. Decode 内部观察
+在 decode 阶段内部，transformer 计算占总 decode 时间的 95.79%，而 LM head 仅占 3.94%，sampling 可忽略不计。这说明在当前模型规模和部署配置下，推理瓶颈仍主要位于 transformer 主体，而非输出投影层。
+
+重要结论：本工作关注输出层开销的可分解测量与分析，验证其在真实生成链路中的实际占比，并讨论其在不同模型规模和部署条件下成为瓶颈的可能性。
+```
+
+
+4. 其他的一些探查
+- FlashHead论文本身是针对边缘设备的优化方法，背景是小模型里，LM HEAD对应的词汇表是非常大的，部分模型可超过30%；因此有巨大的优化空间；
+- 但是在LRM场景下，尤其是我们放在GPU上训练，对于GPU来说，计算LM Head 层的矩阵乘法（通常是一个非常大的矩阵乘法）可能并不是性能瓶颈，尤其是当模型规模较大时，Transformer层的计算可能占据更大的比例；
+- 但是由于LRM的推理链很长，虽然单次生成的token数量可能不多，但总的生成token数量可能非常大，因此即使LM Head占比不高，优化它仍然可以带来显著的性能提升，因为它会被调用很多次；
+- 对于Qwen3-1.7B模型，"vocab_size": 151936，模型每生成一个词，LM Head 层都要进行一次 $2048 \times 151,936$ 的矩阵乘法；单单这一个 LM Head 层的参数量就有约 3.1 亿，对于一个 1.7B 的模型，这意味着接近 18% 的参数全堆在了最后一层分类上
+
+5. ransformer里到底在干啥，为什么每次都这么多啊
+- Transformer层的计算主要包括自注意力机制和前馈神经网络（FFN）。在每一轮生成时，模型需要根据当前的输入和之前生成的上下文来计算下一个 token 的概率分布，这涉及到大量的矩阵乘法和非线性变换。
+- 在生成初期，模型需要处理较少的上下文信息，因此计算相对较快；但随着生成的进行，模型需要处理越来越多的上下文信息，尤其是在LRM场景下，生成的token数量可能非常大，这会导致Transformer层的计算量急剧增加，从而成为性能瓶颈。
+
+对比LM HEAD，虽然每次生成都需要计算LM Head层，但它的计算相对固定，主要是一个矩阵乘法，且不随生成的上下文长度增加而增加；因此在长生成场景下，Transformer层的计算量会远远超过LM Head层，成为主要的性能瓶颈。
 
 
 ### 今日小结
@@ -184,3 +207,20 @@ C1/C2/C3 这类长推理样本，TPOT 大约在：
 延迟与输出 token 数高度相关，说明decode 阶段是总体时延的主导因素；
 因此，针对 decode 路径中的 LM head / sampling 等环节做加速，是有实验意义的
 ```
+
+```text
+profiler 结论
+在 decode 阶段，Transformer 计算占总 decode 时间的 95.79%，而 LM head 仅占 3.94%，sampling 可忽略不计；
+因此，在当前模型规模和部署配置下，推理瓶颈仍主要位于 transformer 主体，而非输出投影层；但是！！！
+
+虽然 FlashHead 所作用的模块在端到端推理时延中的占比并非主导，但其绝对耗时在长响应场景下仍然不可忽略。更重要的是，在高频调用的在线推理系统中，该局部模块的稳定优化能够转化为可观的累计 GPU 时间节省与吞吐提升，因此具有现实部署价值。
+```
+
+----------------------
+
+
+### 集成FlashHead
+
+- 使用GitHub上的FlashHead实现，地址：https://github.com/embedl/flash-head/blob/master/src/flash_head/flash_head.py
+- 主要修改模型的输出层，将原来的线性层替换为FlashHead实现的模块
+- 本地生成clustering_cache.safetensors文件，包含了词表中每个token的embedding向量，用于FlashHead的聚类操作

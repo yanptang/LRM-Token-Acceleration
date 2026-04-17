@@ -64,7 +64,7 @@ git push #将本地提交推送到远程仓库
 squeue -u $USER  #查看当前用户的任务队列
 scontrol show job 你的JOBID #查看指定JOBID的详细信息
 watch -n 2 squeue -u tongf #每2秒刷新一次，查看当前用户的任务队列
-sinfo -N -o "%N %G %t %C" #查看集群节点状态，显示节点名称、GPU类型、状态和CPU/GPU资源使用情况
+sinfo -N -o "%N %G %t %C" #查看集群节点状态，显示节点名称ac、GPU类型、状态和CPU/GPU资源使用情况
 scancel JOBID #取消指定JOBID的任务 b  
 ```
 
