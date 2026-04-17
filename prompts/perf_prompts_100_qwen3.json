@@ -1,0 +1,502 @@
+[
+  {
+    "id": "P001",
+    "category": "arithmetic",
+    "prompt": "A train travels 72 km in 1.5 hours. Explain step by step how to find its average speed in km/h."
+  },
+  {
+    "id": "P002",
+    "category": "arithmetic",
+    "prompt": "A jacket costs $120, gets a 25% discount, and then a 10% tax is added. Calculate the final price step by step."
+  },
+  {
+    "id": "P003",
+    "category": "arithmetic",
+    "prompt": "If 5 workers finish a task in 12 days, how many days will 8 workers need, assuming equal productivity? Explain step by step."
+  },
+  {
+    "id": "P004",
+    "category": "arithmetic",
+    "prompt": "A rectangle has length 18 cm and width 7 cm. Explain step by step how to find its area and perimeter."
+  },
+  {
+    "id": "P005",
+    "category": "arithmetic",
+    "prompt": "A student scored 78, 84, 91, and 87 on four tests. Explain step by step how to find the average score."
+  },
+  {
+    "id": "P006",
+    "category": "arithmetic",
+    "prompt": "A water tank contains 240 liters. If 15 liters are used every day, explain step by step how many full days the water will last."
+  },
+  {
+    "id": "P007",
+    "category": "arithmetic",
+    "prompt": "A phone originally costs $900 and is discounted by 15%. Then a shipping fee of $20 is added. Find the final price step by step."
+  },
+  {
+    "id": "P008",
+    "category": "arithmetic",
+    "prompt": "A runner completes 10 km in 50 minutes. Explain step by step how to convert the pace into km/h."
+  },
+  {
+    "id": "P009",
+    "category": "arithmetic",
+    "prompt": "A shop buys a bag for $40 and sells it for $58. Explain step by step how to calculate the profit and profit percentage."
+  },
+  {
+    "id": "P010",
+    "category": "arithmetic",
+    "prompt": "A recipe for 4 people uses 300 g of rice. Explain step by step how much rice is needed for 10 people."
+  },
+  {
+    "id": "P011",
+    "category": "arithmetic",
+    "prompt": "A car uses 36 liters of fuel to travel 450 km. Explain step by step how to find fuel consumption in liters per 100 km."
+  },
+  {
+    "id": "P012",
+    "category": "arithmetic",
+    "prompt": "A class has 18 boys and 12 girls. Explain step by step how to find the ratio of boys to girls and the percentage of girls."
+  },
+  {
+    "id": "P013",
+    "category": "arithmetic",
+    "prompt": "A person saves $45 per week. They already have $180 and want to reach $900. Explain step by step how many weeks it will take."
+  },
+  {
+    "id": "P014",
+    "category": "arithmetic",
+    "prompt": "A box contains 24 red balls and 16 blue balls. Explain step by step how to find the probability of drawing a blue ball."
+  },
+  {
+    "id": "P015",
+    "category": "arithmetic",
+    "prompt": "A café sells coffee for $3.50 each. If 48 coffees are sold, explain step by step how to find the total revenue."
+  },
+  {
+    "id": "P016",
+    "category": "arithmetic",
+    "prompt": "A population grows from 8,000 to 8,640 in one year. Explain step by step how to calculate the percentage increase."
+  },
+  {
+    "id": "P017",
+    "category": "arithmetic",
+    "prompt": "A cyclist rides 28 km in 1 hour 20 minutes. Explain step by step how to find the average speed in km/h."
+  },
+  {
+    "id": "P018",
+    "category": "arithmetic",
+    "prompt": "A movie ticket costs $14. A group of 9 people gets a total discount of $18. Explain step by step how much they pay altogether."
+  },
+  {
+    "id": "P019",
+    "category": "arithmetic",
+    "prompt": "A warehouse stores boxes in 12 rows with 18 boxes in each row. Explain step by step how to find the total number of boxes."
+  },
+  {
+    "id": "P020",
+    "category": "arithmetic",
+    "prompt": "A baker used 7.5 kg of flour to make 300 rolls. Explain step by step how much flour is used per roll in grams."
+  },
+  {
+    "id": "P021",
+    "category": "arithmetic",
+    "prompt": "A bank account contains $2,400 and earns 5% simple interest for 3 years. Explain step by step how much interest is earned."
+  },
+  {
+    "id": "P022",
+    "category": "arithmetic",
+    "prompt": "A shirt price increases from $32 to $40. Explain step by step how to calculate the percentage increase."
+  },
+  {
+    "id": "P023",
+    "category": "arithmetic",
+    "prompt": "A bus leaves at 08:35 and arrives at 11:20. Explain step by step how long the trip takes."
+  },
+  {
+    "id": "P024",
+    "category": "arithmetic",
+    "prompt": "A farmer has 48 chickens and packs eggs equally into 6 boxes. Explain step by step how many eggs go into each box if there are 144 eggs."
+  },
+  {
+    "id": "P025",
+    "category": "arithmetic",
+    "prompt": "A student reads 18 pages per day for 14 days. Explain step by step how many pages are read in total."
+  },
+  {
+    "id": "P026",
+    "category": "algebra",
+    "prompt": "A farmer has chickens and rabbits. There are 35 heads and 94 legs in total. Explain step by step how to find how many chickens and rabbits there are."
+  },
+  {
+    "id": "P027",
+    "category": "algebra",
+    "prompt": "Solve step by step: 3x + 7 = 28."
+  },
+  {
+    "id": "P028",
+    "category": "algebra",
+    "prompt": "Solve step by step: 5x - 9 = 2x + 12."
+  },
+  {
+    "id": "P029",
+    "category": "algebra",
+    "prompt": "Explain step by step how to solve the system: x + y = 12 and x - y = 4."
+  },
+  {
+    "id": "P030",
+    "category": "algebra",
+    "prompt": "A number is multiplied by 4 and then 6 is added to get 34. Explain step by step how to find the number."
+  },
+  {
+    "id": "P031",
+    "category": "algebra",
+    "prompt": "The sum of two consecutive integers is 41. Explain step by step how to find the two integers."
+  },
+  {
+    "id": "P032",
+    "category": "algebra",
+    "prompt": "The perimeter of a rectangle is 50 cm and its length is 3 cm more than its width. Explain step by step how to find the dimensions."
+  },
+  {
+    "id": "P033",
+    "category": "algebra",
+    "prompt": "A school bought pens and notebooks for a total of $62. Pens cost $2 each and notebooks cost $6 each. If 19 items were bought, explain step by step how many of each were purchased."
+  },
+  {
+    "id": "P034",
+    "category": "algebra",
+    "prompt": "Solve step by step: 2(x - 3) + 5 = 17."
+  },
+  {
+    "id": "P035",
+    "category": "algebra",
+    "prompt": "Solve step by step: 7 - 2(3x - 4) = 1."
+  },
+  {
+    "id": "P036",
+    "category": "algebra",
+    "prompt": "Explain step by step how to solve: x/4 + 3 = 8."
+  },
+  {
+    "id": "P037",
+    "category": "algebra",
+    "prompt": "The product of two consecutive integers is 56. Explain step by step how to find the integers."
+  },
+  {
+    "id": "P038",
+    "category": "algebra",
+    "prompt": "A theater sold adult tickets for $12 and child tickets for $7. If 40 tickets brought in $390, explain step by step how many of each ticket were sold."
+  },
+  {
+    "id": "P039",
+    "category": "algebra",
+    "prompt": "Solve step by step: 4x + 5 = 3x + 17."
+  },
+  {
+    "id": "P040",
+    "category": "algebra",
+    "prompt": "Solve step by step: 6(x + 2) = 3(x + 10)."
+  },
+  {
+    "id": "P041",
+    "category": "algebra",
+    "prompt": "Explain step by step how to solve the system: 2x + y = 11 and x - y = 1."
+  },
+  {
+    "id": "P042",
+    "category": "algebra",
+    "prompt": "A number plus its half equals 27. Explain step by step how to find the number."
+  },
+  {
+    "id": "P043",
+    "category": "algebra",
+    "prompt": "The sum of three consecutive integers is 72. Explain step by step how to find them."
+  },
+  {
+    "id": "P044",
+    "category": "algebra",
+    "prompt": "Solve step by step: 9 - (2x + 1) = 4."
+  },
+  {
+    "id": "P045",
+    "category": "algebra",
+    "prompt": "A rectangle’s length is twice its width, and its area is 98 cm². Explain step by step how to find the dimensions."
+  },
+  {
+    "id": "P046",
+    "category": "fractions_percentages",
+    "prompt": "Explain step by step how to compare the fractions 7/12 and 5/8 without using a calculator."
+  },
+  {
+    "id": "P047",
+    "category": "fractions_percentages",
+    "prompt": "Explain step by step how to add 3/4 and 5/6."
+  },
+  {
+    "id": "P048",
+    "category": "fractions_percentages",
+    "prompt": "Explain step by step how to subtract 7/9 from 5/6."
+  },
+  {
+    "id": "P049",
+    "category": "fractions_percentages",
+    "prompt": "Explain step by step how to multiply 4/5 by 15/16."
+  },
+  {
+    "id": "P050",
+    "category": "fractions_percentages",
+    "prompt": "Explain step by step how to divide 7/8 by 1/4."
+  },
+  {
+    "id": "P051",
+    "category": "fractions_percentages",
+    "prompt": "A class has 24 students, and 9 of them wear glasses. Explain step by step how to express this as a fraction, decimal, and percentage."
+  },
+  {
+    "id": "P052",
+    "category": "fractions_percentages",
+    "prompt": "A store offers 30% off a $250 item. Explain step by step how much money is saved and what the sale price is."
+  },
+  {
+    "id": "P053",
+    "category": "fractions_percentages",
+    "prompt": "Explain step by step how to find 18% of 450."
+  },
+  {
+    "id": "P054",
+    "category": "fractions_percentages",
+    "prompt": "A city recycling rate increased from 40% to 52%. Explain step by step how many percentage points and what relative percentage increase this is."
+  },
+  {
+    "id": "P055",
+    "category": "fractions_percentages",
+    "prompt": "Explain step by step how to convert 0.375 into a fraction in simplest form."
+  },
+  {
+    "id": "P056",
+    "category": "fractions_percentages",
+    "prompt": "Explain step by step how to order these from smallest to largest: 2/3, 0.7, 68%."
+  },
+  {
+    "id": "P057",
+    "category": "fractions_percentages",
+    "prompt": "A laptop battery drops from 100% to 35%. Explain step by step how to calculate the percentage decrease."
+  },
+  {
+    "id": "P058",
+    "category": "fractions_percentages",
+    "prompt": "Explain step by step how to find what percentage 18 is of 45."
+  },
+  {
+    "id": "P059",
+    "category": "fractions_percentages",
+    "prompt": "A school library has 1,200 books, and 18% are science books. Explain step by step how many science books there are."
+  },
+  {
+    "id": "P060",
+    "category": "fractions_percentages",
+    "prompt": "Explain step by step how to increase 84 by 12%."
+  },
+  {
+    "id": "P061",
+    "category": "word_problem",
+    "prompt": "A student wants to save money for a laptop costing $1200. They already have $250 and can save $35 per week. Explain step by step how many weeks it will take."
+  },
+  {
+    "id": "P062",
+    "category": "word_problem",
+    "prompt": "There are 5 red, 4 blue, and 3 green marbles in a bag. Explain step by step how to find the probability of drawing a red or blue marble."
+  },
+  {
+    "id": "P063",
+    "category": "word_problem",
+    "prompt": "A meeting starts at 2:15 PM and lasts 1 hour 45 minutes. Explain step by step what time it ends."
+  },
+  {
+    "id": "P064",
+    "category": "word_problem",
+    "prompt": "A bookshelf has 6 shelves with 14 books on each shelf. Then 17 more books are added. Explain step by step how many books there are now."
+  },
+  {
+    "id": "P065",
+    "category": "word_problem",
+    "prompt": "A road trip is 540 km long. If a car has already traveled 225 km, explain step by step how much distance remains and what fraction of the trip is completed."
+  },
+  {
+    "id": "P066",
+    "category": "word_problem",
+    "prompt": "A farmer planted 8 rows of trees with 13 trees per row. If 9 trees did not survive, explain step by step how many trees remain."
+  },
+  {
+    "id": "P067",
+    "category": "word_problem",
+    "prompt": "A school bus can carry 52 students. If 187 students need transportation, explain step by step how many buses are needed."
+  },
+  {
+    "id": "P068",
+    "category": "word_problem",
+    "prompt": "A store is open from 9:30 AM to 6:15 PM. Explain step by step how many hours and minutes it is open."
+  },
+  {
+    "id": "P069",
+    "category": "word_problem",
+    "prompt": "A container holds 3.5 liters of juice. Explain step by step how many 250 mL cups can be filled completely."
+  },
+  {
+    "id": "P070",
+    "category": "word_problem",
+    "prompt": "A library has 4 copies of each of 36 different books. Explain step by step how many total copies there are."
+  },
+  {
+    "id": "P071",
+    "category": "word_problem",
+    "prompt": "A hiker climbs 450 meters on Saturday and 380 meters on Sunday. Explain step by step how much they climbed in total and the average per day."
+  },
+  {
+    "id": "P072",
+    "category": "word_problem",
+    "prompt": "Two friends share a restaurant bill of $86, but one person pays $14 more than the other. Explain step by step how much each person pays."
+  },
+  {
+    "id": "P073",
+    "category": "word_problem",
+    "prompt": "A tank is filled at 12 liters per minute for 18 minutes. Then 35 liters are drained. Explain step by step how much water remains."
+  },
+  {
+    "id": "P074",
+    "category": "word_problem",
+    "prompt": "A concert hall has 24 rows with 32 seats in each row. If 113 seats are empty, explain step by step how many seats are occupied."
+  },
+  {
+    "id": "P075",
+    "category": "word_problem",
+    "prompt": "A shop sold 18 notebooks on Monday, 24 on Tuesday, and 21 on Wednesday. Explain step by step how to find the total and average sold per day."
+  },
+  {
+    "id": "P076",
+    "category": "word_problem",
+    "prompt": "A train departs at 07:48 and arrives at 10:17. Explain step by step how long the journey lasts."
+  },
+  {
+    "id": "P077",
+    "category": "word_problem",
+    "prompt": "A company produced 2,450 units in January and 2,695 units in February. Explain step by step how to find the increase and percentage increase."
+  },
+  {
+    "id": "P078",
+    "category": "word_problem",
+    "prompt": "A school has 840 students. If 3/7 of them are in lower grades, explain step by step how many students are in lower grades."
+  },
+  {
+    "id": "P079",
+    "category": "word_problem",
+    "prompt": "A person walks 6,500 steps per day for 5 days. Explain step by step how many steps they take in total and the average per day."
+  },
+  {
+    "id": "P080",
+    "category": "word_problem",
+    "prompt": "A bus ticket costs $2.80. Explain step by step how much 15 tickets cost and how much change remains from $50."
+  },
+  {
+    "id": "P081",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to decide whether the number 221 is prime."
+  },
+  {
+    "id": "P082",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to determine whether a triangle with side lengths 6, 8, and 10 is a right triangle."
+  },
+  {
+    "id": "P083",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to find the next number in the sequence 3, 6, 12, 24, 48, ..."
+  },
+  {
+    "id": "P084",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to check whether the year 2024 is a leap year."
+  },
+  {
+    "id": "P085",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to estimate the total cost of buying 7 sandwiches at $5.80 each and 4 drinks at $2.40 each."
+  },
+  {
+    "id": "P086",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to convert 3 hours 45 minutes into minutes."
+  },
+  {
+    "id": "P087",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to decide which is larger: 2^10 or 10^3."
+  },
+  {
+    "id": "P088",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to compute the mean of these numbers: 14, 19, 23, 17, 27."
+  },
+  {
+    "id": "P089",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to find the median of these numbers: 12, 5, 18, 7, 10, 21, 9."
+  },
+  {
+    "id": "P090",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to find the mode of this list: 4, 7, 4, 9, 7, 4, 2, 7, 4."
+  },
+  {
+    "id": "P091",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to round 18.763 to the nearest tenth and nearest whole number."
+  },
+  {
+    "id": "P092",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to convert 5.6 km into meters."
+  },
+  {
+    "id": "P093",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to determine the perimeter of a square with area 81 cm²."
+  },
+  {
+    "id": "P094",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to find the diagonal of a rectangle with side lengths 5 cm and 12 cm."
+  },
+  {
+    "id": "P095",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to determine whether 3/5 or 11/20 is larger."
+  },
+  {
+    "id": "P096",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to find the missing angle in a triangle if the other two angles are 35° and 68°."
+  },
+  {
+    "id": "P097",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to calculate the average of 2.4, 3.1, 4.0, and 5.5."
+  },
+  {
+    "id": "P098",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to convert 72 km/h into meters per second."
+  },
+  {
+    "id": "P099",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to decide whether the statement 'All squares are rectangles' is true."
+  },
+  {
+    "id": "P100",
+    "category": "structured_reasoning",
+    "prompt": "Explain step by step how to compare these three phone plans: Plan A costs $18 plus $2 per GB, Plan B costs $24 plus $1.2 per GB, and Plan C costs $30 plus $0.8 per GB. Which is cheapest at 2 GB, 8 GB, and 15 GB?"
+  }
+]
